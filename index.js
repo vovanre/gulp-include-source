@@ -49,7 +49,9 @@ function parseFiles(source, cwd) {
       }
     }
 
-    return re;
+    return re.filter(function (val) {
+      return val != "";
+    });
   }
 
   return glob.sync(source, {cwd: cwd});
