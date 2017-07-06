@@ -61,11 +61,8 @@ function parseFiles(source, cwd, context, skipEmptyFiles) {
     }
 
     if (skipEmptyFiles){
-        result = result.filter(function(file) {
-            var result = fs.statSync(cwd + file).size > 0;
-            if (!result)
-                gutil.log(gutil.colors.yellow('Skip empty file: ' + file));
-            return result;
+        result = result.filter(function(file) {            
+            return fs.statSync(cwd + file).size > 0;
         });
     }
     return result;
