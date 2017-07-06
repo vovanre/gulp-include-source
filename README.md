@@ -103,6 +103,13 @@ Type: `String`
 When available, will add before all filenames.
 
 
+#### options.skipEmptyFiles
+
+Type: `boolean`
+
+When available, will skip all empty files
+
+
 
 ## License
 
