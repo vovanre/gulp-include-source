@@ -42,24 +42,33 @@ function globArray(array, cwd) {
     return result;
 }
 
-function parseFiles(source, cwd, context) {
+function parseFiles(source, cwd, context, skipEmptyFiles) {
+    var result;
     if (source.indexOf('list:') === 0) {
         var cleanSrc = source.replace('list:', '');
         if (!context.hasOwnProperty(cleanSrc)) {
             return [];
         }
-        return globArray(context[cleanSrc], cwd);
-    }
-
-    if (source.indexOf('file:') === 0) {
+        result = globArray(context[cleanSrc], cwd);
+    } else if (source.indexOf('file:') === 0) {
         var cleanSrc = source.replace('file:', '');
         var result = fs.readFileSync(cleanSrc).toString().split('\n');
-        return globArray(result, cwd);
+        result = globArray(result, cwd);
+    } else {
+        result = glob.sync(source, {
+            cwd: cwd
+        });
     }
 
-    return glob.sync(source, {
-        cwd: cwd
-    });
+    if (skipEmptyFiles){
+        result = result.filter(function(file) {
+            var result = fs.statSync(cwd + file).size > 0;
+            if (!result)
+                gutil.log(gutil.colors.yellow('Skip empty file: ' + file));
+            return result;
+        });
+    }
+    return result;
 }
 
 function injectFiles(file, options) {
@@ -73,8 +82,10 @@ function injectFiles(file, options) {
             placeholder = placeholders[type];
         }
 
-        var files = parseFiles(argument, cwd, options.context || {});
-        if (placeholder && files && files.length > 0) {
+        var files = parseFiles(argument, cwd, options.context || {}, options.skipEmptyFiles || false);
+        if (placeholder && files) {
+           if (files.length == 0)
+               return '';
            return files.map(function (filename) {
                 filename = (options.prefix || "") + replaceExtension(filename, type, options);
                 return util.format(placeholder, filename);
