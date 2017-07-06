@@ -47,7 +47,7 @@ function parseFiles(source, cwd, context, skipEmptyFiles) {
     if (source.indexOf('list:') === 0) {
         var cleanSrc = source.replace('list:', '');
         if (!context.hasOwnProperty(cleanSrc)) {
-            return [];
+            return false;
         }
         result = globArray(context[cleanSrc], cwd);
     } else if (source.indexOf('file:') === 0) {
