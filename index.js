@@ -49,7 +49,7 @@ function parseFiles(source, cwd, context) {
     if (source.indexOf('list:') === 0) {
         var cleanSrc = source.replace('list:', '');
         if (!context.hasOwnProperty(cleanSrc)) {
-            throw new PluginError(PLUGIN_NAME, 'Unknown list: ' + cleanSrc);
+            return [];
         }
         return globArray(context[cleanSrc], cwd);
     }
