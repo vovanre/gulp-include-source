@@ -9,16 +9,13 @@ var through = require('through2'),
     util = require('util'),
     PluginError = gutil.PluginError;
 
-var PLUGIN_NAME = 'gulp-include-source';
+var PLUGIN_NAME = 'gulp-include-source-ex';
 
 var placeholders = {
     'js': '<script src="%s"></script>',
     'css': '<link rel="stylesheet" href="%s">'
 };
 
-function matchExpressions(contents) {
-    return contents.match(/<!--\s+include:([a-z]+)\(([^)]+)\)\s+-->/);
-}
 
 function replaceExtension(filename, type, options) {
 
@@ -68,10 +65,7 @@ function parseFiles(source, cwd, context) {
 function injectFiles(file, options) {
     var contents = file.contents.toString();
     var cwd = options.cwd || path.dirname(file.path);
-    var matches = matchExpressions(contents);
-    while (matches) {
-
-        var type = matches[1];
+    return contents.replace(/<!--\s+include:([a-z]+)\(([^)]+)\)\s+-->/g, function(str, type, argument) {
         var placeholder;
         if (options.placeholder && options.placeholder[type]) {
             placeholder = options.placeholder[type];
@@ -79,27 +73,18 @@ function injectFiles(file, options) {
             placeholder = placeholders[type];
         }
 
-        var files = parseFiles(matches[2], cwd, options.context || {});
-
-        var includes = '';
-
+        var files = parseFiles(argument, cwd, options.context || {});
         if (placeholder && files && files.length > 0) {
-
-            includes = files.map(function (filename) {
+           return files.map(function (filename) {
                 filename = (options.prefix || "") + replaceExtension(filename, type, options);
                 return util.format(placeholder, filename);
             }).join('\n');
         }
-
-        contents = contents.substring(0, matches.index) + includes + contents.substring(matches.index + matches[0].length);
-        matches = matchExpressions(contents);
-    }
-
-    return contents;
+        return str;
+    });
 }
 
 function gulpIncludeSource(options) {
-
     options = options || {};
 
     var stream = through.obj(function (file, enc, callback) {
