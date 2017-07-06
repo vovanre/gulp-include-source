@@ -1,5 +1,5 @@
 {
-  "name": "gulp-include-source",
+  "name": "gulp-include-source-ex",
   "version": "0.0.5",
   "description": "Include scripts and styles into your HTML files automatically.",
   "author": {
