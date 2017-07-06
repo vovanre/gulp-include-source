@@ -1,118 +1,135 @@
 'use strict';
 
 var through = require('through2'),
-glob = require('glob'),
-path = require('path'),
-replaceExt = require('replace-ext'),
-gutil = require('gulp-util'),
-fs = require('fs'),
-PluginError = gutil.PluginError;
+    glob = require('glob'),
+    path = require('path'),
+    replaceExt = require('replace-ext'),
+    gutil = require('gulp-util'),
+    fs = require('fs'),
+    util = require('util'),
+    PluginError = gutil.PluginError;
 
 var PLUGIN_NAME = 'gulp-include-source';
 
 var placeholders = {
-  'js': '<script src="%"></script>',
-  'css': '<link rel="stylesheet" href="%">'
+    'js': '<script src="%s"></script>',
+    'css': '<link rel="stylesheet" href="%s">'
 };
 
 function matchExpressions(contents) {
-  return contents.match(/<!--\s+include:([a-z]+)\(([^)]+)\)\s+-->/);
+    return contents.match(/<!--\s+include:([a-z]+)\(([^)]+)\)\s+-->/);
 }
 
 function replaceExtension(filename, type, options) {
 
-  if (options.scriptExt && type === 'js') {
-    filename = replaceExt(filename, '.' + options.scriptExt);
-  } else if (options.styleExt && type === 'css') {
-    filename = replaceExt(filename, '.' + options.styleExt);
-  }
-
-  return filename;
-}
-
-function parseFiles(source, cwd) {
-
-  if (source.indexOf('list:') === 0) {
-    var cleanSrc = source.replace('list:', '');
-    var re = fs.readFileSync(cleanSrc).toString().split('\n');
-    var fileGlob = null,
-    arrayLength = re.length;
-
-    //Allows wild cards to be implemented in list
-    for (var i = 0; i < arrayLength; i++) {
-      var val = re[i];
-
-      if (val.match(/(\*+)/)) {
-        fileGlob = glob.sync(val, {cwd: cwd});
-        Array.prototype.splice.apply(re, [i, 1].concat(fileGlob));
-        arrayLength = re.length;
-      }
+    if (options.scriptExt && type === 'js') {
+        filename = replaceExt(filename, '.' + options.scriptExt);
+    } else if (options.styleExt && type === 'css') {
+        filename = replaceExt(filename, '.' + options.styleExt);
     }
 
-    return re.filter(function (val) {
-      return val != "";
-    });
-  }
+    return filename;
+}
 
-  return glob.sync(source, {cwd: cwd});
+function globArray(array, cwd) {
+    var result = [];
+    array.filter(function (val) {
+        if (!val || val.trim() == '')
+            return false;
+        return true;
+    }).forEach(function (val) {
+        result = result.concat(glob.sync(val, {
+            cwd: cwd
+        }));
+    });
+    return result;
+}
+
+function parseFiles(source, cwd, context) {
+    if (source.indexOf('list:') === 0) {
+        var cleanSrc = source.replace('list:', '');
+        if (!context.hasOwnProperty(cleanSrc)) {
+            throw new PluginError(PLUGIN_NAME, 'Unknown list: ' + cleanSrc);
+        }
+        return globArray(context[cleanSrc], cwd);
+    }
+
+    if (source.indexOf('file:') === 0) {
+        var cleanSrc = source.replace('file:', '');
+        var result = fs.readFileSync(cleanSrc).toString().split('\n');
+        return globArray(result, cwd);
+    }
+
+    return glob.sync(source, {
+        cwd: cwd
+    });
 }
 
 function injectFiles(file, options) {
-  var contents = file.contents.toString();
-  var cwd = options.cwd || path.dirname(file.path);
-  var matches = matchExpressions(contents);
+    var contents = file.contents.toString();
+    var cwd = options.cwd || path.dirname(file.path);
+    var matches = matchExpressions(contents);
+    while (matches) {
 
-  while (matches) {
+        var type = matches[1];
+        var placeholder;
+        if (options.placeholder && options.placeholder[type]) {
+            placeholder = options.placeholder[type];
+        } else {
+            placeholder = placeholders[type];
+        }
 
-    var type = matches[1];
-    var placeholder = placeholders[type];
-    var files = parseFiles(matches[2], cwd);
-    var includes = '';
+        var files = parseFiles(matches[2], cwd, options.context || {});
 
-    if (placeholder && files && files.length > 0) {
+        var includes = '';
 
-      includes = files.map(function (filename) {
-        filename = replaceExtension(filename, type, options);
-        return placeholder.split('%').join(filename);
-      }).join('\n');
+        if (placeholder && files && files.length > 0) {
+
+            includes = files.map(function (filename) {
+                filename = (options.prefix || "") + replaceExtension(filename, type, options);
+                return util.format(placeholder, filename);
+            }).join('\n');
+        }
+
+        contents = contents.substring(0, matches.index) + includes + contents.substring(matches.index + matches[0].length);
+        matches = matchExpressions(contents);
     }
 
-    contents = contents.substring(0, matches.index) + includes + contents.substring(matches.index + matches[0].length);
-    matches = matchExpressions(contents);
-  }
-
-  return contents;
+    return contents;
 }
 
 function gulpIncludeSource(options) {
 
-  options = options || {};
+    options = options || {};
 
-  var stream = through.obj(function (file, enc, callback) {
+    var stream = through.obj(function (file, enc, callback) {
+        try {
+            if (file.isNull()) {
+                this.push(file); // Do nothing if no contents
+                return callback();
+            }
 
-    if (file.isNull()) {
-      this.push(file); // Do nothing if no contents
-      return callback();
-    }
+            if (file.isStream()) {
+                this.emit('error', new PluginError(PLUGIN_NAME, 'Streaming not supported!'));
+                return callback();
+            }
 
-    if (file.isStream()) {
-      this.emit('error', new PluginError(PLUGIN_NAME, 'Streaming not supported!'));
-      return callback();
-    }
+            if (file.isBuffer()) {
+                try {
+                    file.contents = new Buffer(injectFiles(file, options));
+                } catch (err) {
+                    this.emit('error', new gutil.PluginError(PLUGIN_NAME, err));
+                }
+            }
 
-    if (file.isBuffer()) {
-      try {
-        file.contents = new Buffer(injectFiles(file, options));
-      } catch (err) {
-        this.emit('error', new gutil.PluginError(PLUGIN_NAME, err));
-      }
-    }
+            this.push(file);
+        } catch (err) {
+            this.emit('error', err);
+        }
+        return callback();
+    });
 
-    this.push(file);
-    return callback();
-  });
-
-  return stream;
+    return stream;
 }
 
 module.exports = gulpIncludeSource;
