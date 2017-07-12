@@ -86,9 +86,12 @@ function injectFiles(file, options) {
             if (files.length == 0)
                 return '';
             return files.map(function (filename) {
-                filename = (options.prefix || "") + replaceExtension(filename, type, options);
+                filename = replaceExtension(filename, type, options);
                 if (options.useHash) {
-                    filename += '?' + Math.abs(CRC32.buf(fs.readFileSync(cwd + file)));
+                    filename += '?' + Math.abs(CRC32.buf(fs.readFileSync(cwd + filename)));
+                }
+                if (options.prefix) {
+                    filename = options.prefix + filename;
                 }
                 return util.format(placeholder, filename);
             }).join('\n');
