@@ -7,7 +7,9 @@ var through = require('through2'),
     gutil = require('gulp-util'),
     fs = require('fs'),
     util = require('util'),
-    PluginError = gutil.PluginError;
+    PluginError = gutil.PluginError,
+    CRC32 = require('crc-32')
+;
 
 var PLUGIN_NAME = 'gulp-include-source-ex';
 
@@ -60,8 +62,8 @@ function parseFiles(source, cwd, context, skipEmptyFiles) {
         });
     }
 
-    if (skipEmptyFiles){
-        result = result.filter(function(file) {            
+    if (skipEmptyFiles) {
+        result = result.filter(function (file) {
             return fs.statSync(cwd + file).size > 0;
         });
     }
@@ -71,7 +73,7 @@ function parseFiles(source, cwd, context, skipEmptyFiles) {
 function injectFiles(file, options) {
     var contents = file.contents.toString();
     var cwd = options.cwd || path.dirname(file.path);
-    return contents.replace(/<!--\s+include:([a-z]+)\(([^)]+)\)\s+-->/g, function(str, type, argument) {
+    return contents.replace(/<!--\s+include:([a-z]+)\(([^)]+)\)\s+-->/g, function (str, type, argument) {
         var placeholder;
         if (options.placeholder && options.placeholder[type]) {
             placeholder = options.placeholder[type];
@@ -81,10 +83,13 @@ function injectFiles(file, options) {
 
         var files = parseFiles(argument, cwd, options.context || {}, options.skipEmptyFiles || false);
         if (placeholder && files) {
-           if (files.length == 0)
-               return '';
-           return files.map(function (filename) {
+            if (files.length == 0)
+                return '';
+            return files.map(function (filename) {
                 filename = (options.prefix || "") + replaceExtension(filename, type, options);
+                if (options.useHash) {
+                    filename += '?' + CRC32.buf(fs.readFileSync(cwd + file));
+                }
                 return util.format(placeholder, filename);
             }).join('\n');
         }
@@ -95,7 +100,7 @@ function injectFiles(file, options) {
 function gulpIncludeSource(options) {
     options = options || {};
 
-    var stream = through.obj(function (file, enc, callback) {
+    return through.obj(function (file, enc, callback) {
         try {
             if (file.isNull()) {
                 this.push(file); // Do nothing if no contents
@@ -121,8 +126,6 @@ function gulpIncludeSource(options) {
         }
         return callback();
     });
-
-    return stream;
 }
 
 module.exports = gulpIncludeSource;

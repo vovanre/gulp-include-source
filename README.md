@@ -110,7 +110,14 @@ Type: `boolean`
 When available, will skip all empty files
 
 
+#### options.useHash
+
+Type: `boolean`
+
+When available, will add file hash to end filename `/script.js?123456`.
+
+
 
 ## License
 
-MIT © [André Gil](http://somepixels.net)
+MIT © vovanre <just.vovanre@gmail.com>

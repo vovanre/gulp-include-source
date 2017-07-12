@@ -1,19 +1,18 @@
 {
   "name": "gulp-include-source-ex",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Include scripts and styles into your HTML files automatically.",
   "author": {
-    "name": "André Gil",
-    "email": "hey@andregil.org",
-    "url": "http://somepixels.net/"
+    "name": "vovanre",
+    "email": "just.vovanre@gmail.com"
   },
-  "homepage": "https://github.com/gil/gulp-include-source",
+  "homepage": "https://github.com/vovanre/gulp-include-source-ex",
   "repository": {
     "type": "git",
-    "url": "git://github.com/gil/gulp-include-source.git"
+    "url": "git://github.com/vovanre/gulp-include-source-ex.git"
   },
   "bugs": {
-    "url": "https://github.com/gil/gulp-include-source/issues"
+    "url": "https://github.com/vovanre/gulp-include-source-ex/issues"
   },
   "readmeFilename": "README.md",
   "main": "index.js",
@@ -30,10 +29,11 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "replace-ext": "0.0.1",
-    "through2": "^0.4.1",
+    "crc-32": "^1.0.2",
     "glob": "^3.2.9",
-    "gulp-util": "^2.2.14"
+    "gulp-util": "^2.2.14",
+    "replace-ext": "0.0.1",
+    "through2": "^0.4.1"
   },
   "devDependencies": {
     "vinyl": "^0.2.3",
