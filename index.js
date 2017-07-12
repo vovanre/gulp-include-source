@@ -88,7 +88,7 @@ function injectFiles(file, options) {
             return files.map(function (filename) {
                 filename = (options.prefix || "") + replaceExtension(filename, type, options);
                 if (options.useHash) {
-                    filename += '?' + CRC32.buf(fs.readFileSync(cwd + file));
+                    filename += '?' + Math.abs(CRC32.buf(fs.readFileSync(cwd + file)));
                 }
                 return util.format(placeholder, filename);
             }).join('\n');
